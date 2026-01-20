@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Login - Nai Health Monitor</title>
+    <link rel="stylesheet" href="/assets/styles.css" />
+  </head>
+  <body>
+    <div class="background-glow"></div>
+    <div class="login-wrap">
+      <div class="login-card">
+        <div class="login-brand">
+          <div class="brand-mark">NH</div>
+          <div>
+            <div class="brand-title">Nai Health Monitor</div>
+            <div class="brand-subtitle">请先登录</div>
+          </div>
+        </div>
+        <form method="post" action="/login">
+          <label>
+            用户名
+            <input name="username" autocomplete="username" required />
+          </label>
+          <label>
+            密码
+            <input name="password" type="password" autocomplete="current-password" required />
+          </label>
+          <button class="btn primary" type="submit" style="margin-top: 12px">登录</button>
+        </form>
+        <div class="muted">建议开启 HTTPS 后设置 `AUTH_COOKIE_SECURE=true`。</div>
+      </div>
+    </div>
+  </body>
+</html>

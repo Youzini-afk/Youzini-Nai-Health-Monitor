@@ -1,0 +1,364 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Key 管理 - Nai Health Monitor</title>
+    <style>
+      :root {
+        --bg: #0b1020;
+        --card: rgba(255, 255, 255, 0.06);
+        --border: rgba(255, 255, 255, 0.1);
+        --text: rgba(255, 255, 255, 0.92);
+        --muted: rgba(255, 255, 255, 0.6);
+        --ok: rgba(26, 127, 81, 0.35);
+        --bad: rgba(160, 36, 36, 0.35);
+      }
+      body {
+        margin: 0;
+        font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial;
+        background: radial-gradient(1200px 600px at 30% 10%, rgba(120, 90, 255, 0.18), transparent),
+          radial-gradient(900px 500px at 70% 20%, rgba(0, 200, 255, 0.12), transparent), var(--bg);
+        color: var(--text);
+      }
+      .wrap {
+        max-width: 1200px;
+        margin: 24px auto;
+        padding: 0 16px;
+      }
+      header {
+        display: flex;
+        justify-content: space-between;
+        align-items: baseline;
+        gap: 12px;
+      }
+      h1 {
+        margin: 0;
+        font-size: 22px;
+        letter-spacing: 0.2px;
+      }
+      .muted {
+        color: var(--muted);
+        font-size: 13px;
+      }
+      .btn {
+        background: transparent;
+        color: var(--text);
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        padding: 8px 12px;
+        cursor: pointer;
+      }
+      .btn.primary {
+        background: rgba(255, 255, 255, 0.08);
+        font-weight: 800;
+      }
+      .grid {
+        display: grid;
+        grid-template-columns: 1fr 2fr;
+        gap: 14px;
+        margin-top: 14px;
+      }
+      .card {
+        background: var(--card);
+        border: 1px solid var(--border);
+        border-radius: 16px;
+        padding: 14px;
+        backdrop-filter: blur(10px);
+      }
+      textarea {
+        width: 100%;
+        min-height: 180px;
+        resize: vertical;
+        margin-top: 10px;
+        padding: 10px 12px;
+        border-radius: 12px;
+        border: 1px solid var(--border);
+        background: rgba(0, 0, 0, 0.25);
+        color: var(--text);
+        outline: none;
+      }
+      .row {
+        display: grid;
+        grid-template-columns: 60px 1fr 90px 80px 90px 110px 170px 170px 1.2fr;
+        gap: 8px;
+        padding: 10px 0;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+        align-items: center;
+      }
+      .row.head {
+        color: var(--muted);
+        font-size: 12px;
+      }
+      .mono {
+        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New",
+          monospace;
+      }
+      .tag {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        border: 1px solid var(--border);
+        border-radius: 999px;
+        padding: 4px 10px;
+        font-size: 12px;
+        font-weight: 800;
+      }
+      .tag.ok {
+        background: var(--ok);
+      }
+      .tag.bad {
+        background: var(--bad);
+      }
+      .actions {
+        display: flex;
+        gap: 6px;
+        flex-wrap: wrap;
+      }
+      .chip {
+        margin-top: 10px;
+        padding: 10px 12px;
+        border-radius: 12px;
+        border: 1px solid var(--border);
+        background: rgba(0, 0, 0, 0.25);
+      }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <header>
+        <div>
+          <h1>Key 管理</h1>
+          <div class="muted">上传 / 管理 Key，并一键拉取“更健康且更轻负载”的 Key（会返回明文 Key，请注意权限）</div>
+        </div>
+        <div style="display: flex; gap: 10px; align-items: center">
+          <a class="btn" href="/status">返回状态页</a>
+          <form method="post" action="/logout" style="margin: 0">
+            <button class="btn" type="submit">退出</button>
+          </form>
+        </div>
+      </header>
+
+      <div class="grid">
+        <div class="card">
+          <div style="display: flex; justify-content: space-between; align-items: baseline; gap: 10px">
+            <div>
+              <div style="font-weight: 900">上传 Key</div>
+              <div class="muted">每行一个 Key（或逗号分隔），重复会自动跳过。</div>
+            </div>
+            <button class="btn primary" id="importBtn" type="button">导入</button>
+          </div>
+          <textarea id="keysInput" placeholder="key1&#10;key2&#10;..."></textarea>
+          <div class="chip muted" id="importResult">-</div>
+
+          <div style="height: 12px"></div>
+          <div style="display: flex; gap: 10px; flex-wrap: wrap">
+            <button class="btn primary" id="checkoutBtn" type="button">一键拉取健康 Key</button>
+            <button class="btn" id="checkAllBtn" type="button">全量健康检查</button>
+            <button class="btn" id="refreshBtn" type="button">刷新列表</button>
+          </div>
+          <div class="chip" id="checkoutResult" style="display: none">
+            <div class="muted">仅展示一次：</div>
+            <div class="mono" id="checkoutKey" style="margin-top: 6px; word-break: break-all"></div>
+            <div style="display: flex; gap: 10px; margin-top: 10px">
+              <button class="btn" id="copyBtn" type="button">复制</button>
+              <button class="btn" id="hideBtn" type="button">隐藏</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div style="display: flex; justify-content: space-between; align-items: baseline">
+            <div>
+              <div style="font-weight: 900">Key 列表</div>
+              <div class="muted">这里不会显示明文 Key，只显示 hash 与状态。</div>
+            </div>
+          </div>
+          <div id="list"></div>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      const keysInput = document.getElementById("keysInput");
+      const importBtn = document.getElementById("importBtn");
+      const refreshBtn = document.getElementById("refreshBtn");
+      const checkAllBtn = document.getElementById("checkAllBtn");
+      const checkoutBtn = document.getElementById("checkoutBtn");
+      const importResult = document.getElementById("importResult");
+      const list = document.getElementById("list");
+
+      const checkoutResult = document.getElementById("checkoutResult");
+      const checkoutKey = document.getElementById("checkoutKey");
+      const copyBtn = document.getElementById("copyBtn");
+      const hideBtn = document.getElementById("hideBtn");
+
+      function tag(status) {
+        const ok = status === "healthy";
+        const bad = status === "invalid" || status === "unhealthy";
+        const cls = ok ? "ok" : bad ? "bad" : "";
+        return `<span class="tag ${cls}">${status || "-"}</span>`;
+      }
+
+      function fmtTs(ts) {
+        if (!ts) return "-";
+        const d = new Date(ts * 1000);
+        return d.toISOString().replace("T", " ").replace("Z", " UTC");
+      }
+
+      async function apiGet(url) {
+        const resp = await fetch(url, { cache: "no-store" });
+        const data = await resp.json().catch(() => ({}));
+        if (!resp.ok) throw new Error(data.detail || "request failed");
+        return data;
+      }
+
+      async function apiPostForm(url, form) {
+        const resp = await fetch(url, { method: "POST", body: form });
+        const data = await resp.json().catch(() => ({}));
+        if (!resp.ok) throw new Error(data.detail || "request failed");
+        return data;
+      }
+
+      async function loadList() {
+        list.innerHTML = '<div class="muted">加载中…</div>';
+        try {
+          const data = await apiGet("/api/keys");
+          const items = data.items || [];
+          if (!items.length) {
+            list.innerHTML = '<div class="muted">暂无 Key</div>';
+            return;
+          }
+          const head = `
+            <div class="row head">
+              <div>ID</div>
+              <div>Hash</div>
+              <div>状态</div>
+              <div>Tier</div>
+              <div>启用</div>
+              <div>失败次数</div>
+              <div>上次检查</div>
+              <div>上次拉取</div>
+              <div>操作</div>
+            </div>
+          `;
+          const rows = items
+            .map((k) => {
+              const enabled = !!k.is_enabled;
+              const tier = k.tier == null ? "-" : String(k.tier);
+              const err = k.last_error ? String(k.last_error) : "";
+              const enableLabel = enabled ? "是" : "否";
+              return `
+                <div class="row">
+                  <div class="mono">${k.id}</div>
+                  <div class="mono" title="${err.replaceAll('"', "&quot;")}">${k.key_hash}</div>
+                  <div>${tag(k.status)}</div>
+                  <div class="mono">${tier}</div>
+                  <div class="mono">${enableLabel}</div>
+                  <div class="mono">${k.fail_streak || 0}</div>
+                  <div class="mono">${fmtTs(k.last_checked_at)}</div>
+                  <div class="mono">${fmtTs(k.last_checked_out_at)}</div>
+                  <div class="actions">
+                    <button class="btn" data-action="check" data-id="${k.id}" type="button">检查</button>
+                    <button class="btn" data-action="toggle" data-id="${k.id}" data-enabled="${enabled ? "0" : "1"}" type="button">
+                      ${enabled ? "禁用" : "启用"}
+                    </button>
+                    <button class="btn" data-action="delete" data-id="${k.id}" type="button">删除</button>
+                  </div>
+                </div>
+              `;
+            })
+            .join("");
+          list.innerHTML = head + rows;
+        } catch (e) {
+          list.innerHTML = `<div class="muted">加载失败：${String(e.message || e)}</div>`;
+        }
+      }
+
+      importBtn.addEventListener("click", async () => {
+        importResult.textContent = "导入中…";
+        try {
+          const form = new FormData();
+          form.set("keys", keysInput.value || "");
+          const data = await apiPostForm("/api/keys/import", form);
+          importResult.textContent = `收到 ${data.received} 条，新增 ${data.created} 条，跳过重复 ${data.skipped_existing} 条`;
+          keysInput.value = "";
+          await loadList();
+        } catch (e) {
+          importResult.textContent = `导入失败：${String(e.message || e)}`;
+        }
+      });
+
+      refreshBtn.addEventListener("click", loadList);
+
+      checkAllBtn.addEventListener("click", async () => {
+        checkAllBtn.disabled = true;
+        try {
+          await apiPostForm("/api/keys/check-all", new FormData());
+          await loadList();
+        } catch (e) {
+          alert(`检查失败：${String(e.message || e)}`);
+        } finally {
+          checkAllBtn.disabled = false;
+        }
+      });
+
+      checkoutBtn.addEventListener("click", async () => {
+        checkoutBtn.disabled = true;
+        try {
+          const data = await apiPostForm("/api/keys/checkout", new FormData());
+          checkoutKey.textContent = data.key || "";
+          checkoutResult.style.display = "block";
+        } catch (e) {
+          alert(`拉取失败：${String(e.message || e)}`);
+        } finally {
+          checkoutBtn.disabled = false;
+        }
+      });
+
+      copyBtn.addEventListener("click", async () => {
+        try {
+          await navigator.clipboard.writeText(checkoutKey.textContent || "");
+        } catch (e) {
+          alert("复制失败（浏览器权限限制）");
+        }
+      });
+      hideBtn.addEventListener("click", () => {
+        checkoutKey.textContent = "";
+        checkoutResult.style.display = "none";
+      });
+
+      list.addEventListener("click", async (ev) => {
+        const btn = ev.target.closest("button[data-action]");
+        if (!btn) return;
+        const action = btn.getAttribute("data-action");
+        const id = btn.getAttribute("data-id");
+        try {
+          if (action === "check") {
+            btn.disabled = true;
+            await apiPostForm(`/api/keys/${id}/check`, new FormData());
+            await loadList();
+          } else if (action === "toggle") {
+            btn.disabled = true;
+            const form = new FormData();
+            form.set("enabled", btn.getAttribute("data-enabled") === "1" ? "true" : "false");
+            await apiPostForm(`/api/keys/${id}/toggle`, form);
+            await loadList();
+          } else if (action === "delete") {
+            if (!confirm("确定删除这个 Key？")) return;
+            btn.disabled = true;
+            await apiPostForm(`/api/keys/${id}/delete`, new FormData());
+            await loadList();
+          }
+        } catch (e) {
+          alert(`操作失败：${String(e.message || e)}`);
+        } finally {
+          btn.disabled = false;
+        }
+      });
+
+      loadList();
+    </script>
+  </body>
+</html>
+

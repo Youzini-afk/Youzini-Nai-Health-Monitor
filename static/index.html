@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Nai Health Monitor</title>
+    <link rel="stylesheet" href="/assets/styles.css" />
+  </head>
+  <body>
+    <div class="background-glow"></div>
+
+    <div class="app" id="appRoot">
+      <aside class="sidebar">
+        <div class="brand">
+          <div class="brand-mark">NH</div>
+          <div>
+            <div class="brand-title">Nai Health</div>
+            <div class="brand-subtitle">Monitor · Key Pool</div>
+          </div>
+        </div>
+
+        <nav class="nav">
+          <button class="nav-item active" data-section="dashboard">概览</button>
+          <button class="nav-item" data-section="keys">Key 池</button>
+          <button class="nav-item" data-section="settings">设置</button>
+        </nav>
+
+        <div class="sidebar-footer">
+          <div class="status-pill" id="authStatus">已登录</div>
+          <form method="post" action="/logout" style="margin: 0">
+            <button class="btn ghost" type="submit">退出</button>
+          </form>
+        </div>
+      </aside>
+
+      <main class="main">
+        <header class="topbar">
+          <div>
+            <h1 id="sectionTitle">概览</h1>
+            <p class="muted" id="sectionSubtitle">Key 池统计 · 探活趋势</p>
+          </div>
+          <div class="topbar-actions">
+            <span class="badge muted" id="overallBadge">-</span>
+            <button class="btn ghost" id="refreshBtn" type="button">刷新</button>
+          </div>
+        </header>
+
+        <section class="section active" id="section-dashboard">
+          <div class="grid three">
+            <div class="card">
+              <div class="card-header">
+                <strong>Key 池</strong>
+                <span class="tag" id="keySummaryTag">-</span>
+              </div>
+              <div class="stat"><span class="label">启用</span><span class="value" id="statKeyEnabled">-</span></div>
+              <div class="stat"><span class="label">健康</span><span class="value" id="statKeyHealthy">-</span></div>
+              <div class="stat"><span class="label">不健康</span><span class="value" id="statKeyUnhealthy">-</span></div>
+              <div class="stat"><span class="label">无效</span><span class="value" id="statKeyInvalid">-</span></div>
+              <div class="stat"><span class="label">待检查</span><span class="value" id="statKeyPending">-</span></div>
+            </div>
+
+            <div class="card">
+              <div class="card-header">
+                <strong>探活</strong>
+                <span class="tag" id="monitorSummaryTag">-</span>
+              </div>
+              <div class="stat"><span class="label">启用 Key</span><span class="value" id="statTargetTotal">-</span></div>
+              <div class="stat"><span class="label">健康 Key</span><span class="value" id="statTargetOk">-</span></div>
+              <div class="stat"><span class="label">异常 Key</span><span class="value" id="statTargetBad">-</span></div>
+              <div class="stat"><span class="label">更新时间(UTC)</span><span class="value mono" id="statTime">-</span></div>
+            </div>
+
+            <div class="card">
+              <div class="card-header">
+                <strong>快捷操作</strong>
+              </div>
+              <div class="actions">
+                <button class="btn primary" id="checkoutBtn" type="button">一键拉取健康 Key</button>
+                <button class="btn ghost" id="checkAllBtn" type="button">全量检查 Key</button>
+              </div>
+              <div style="margin-top: 14px">
+                <div class="muted">仅展示一次：</div>
+                <div class="mono" id="checkoutKey" style="margin-top: 8px; word-break: break-all">-</div>
+                <div class="actions" style="margin-top: 10px">
+                  <button class="btn ghost" id="copyCheckoutBtn" type="button">复制</button>
+                  <button class="btn ghost" id="hideCheckoutBtn" type="button">隐藏</button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="grid two" style="margin-top: 20px">
+            <div class="card">
+              <div class="card-header">
+                <strong>Key 池分布</strong>
+                <span class="muted">健康/不健康/无效/待检查</span>
+              </div>
+              <canvas class="chart" id="pieChart" width="800" height="300"></canvas>
+            </div>
+            <div class="card">
+              <div class="card-header">
+                <strong>探活趋势</strong>
+                <span class="muted">健康/不健康/无效/待检查（按检测周期）</span>
+              </div>
+              <canvas class="chart" id="lineChart" width="800" height="300"></canvas>
+            </div>
+          </div>
+        </section>
+
+        <section class="section" id="section-keys">
+          <div class="grid two">
+            <div class="card">
+              <div class="card-header">
+                <strong>上传 Key</strong>
+                <button class="btn primary" id="importBtn" type="button">导入</button>
+              </div>
+              <p class="muted" style="margin-top: 10px">每行一个 Key（或逗号分隔），重复会自动跳过。</p>
+              <textarea id="keysInput" placeholder="key1&#10;key2&#10;..."></textarea>
+              <div class="status-pill" id="importResult" style="margin-top: 12px">-</div>
+            </div>
+            <div class="card">
+              <div class="card-header">
+                <strong>Key 列表</strong>
+                <button class="btn ghost" id="refreshKeysBtn" type="button">刷新</button>
+              </div>
+              <p class="muted" style="margin-top: 10px">提示：409/429/5xx 会进入短暂冷却，冷却期间不会被“一键拉取”。</p>
+              <div class="table" id="keysTable" style="margin-top: 14px"></div>
+            </div>
+          </div>
+        </section>
+
+        <section class="section" id="section-settings">
+          <div class="grid two">
+            <div class="card">
+              <div class="card-header">
+                <strong>Key 监控配置</strong>
+                <button class="btn primary" id="saveConfigBtn" type="button">保存</button>
+              </div>
+              <div class="grid" style="margin-top: 14px; gap: 14px">
+                <label>
+                  健康检查间隔（秒）
+                  <input id="cfgInterval" type="number" min="10" step="1" placeholder="300" />
+                </label>
+                <label style="flex-direction: row; align-items: center; gap: 10px; margin-top: 6px">
+                  <input id="cfgAutoEnabled" type="checkbox" />
+                  启用自动健康检查
+                </label>
+                <label>
+                  失败阈值（达到后判不健康）
+                  <input id="cfgFailThreshold" type="number" min="1" step="1" placeholder="3" />
+                </label>
+                <label style="flex-direction: row; align-items: center; gap: 10px; margin-top: 6px">
+                  <input id="cfgRequireOpus" type="checkbox" />
+                  仅 Opus（tier=3）算健康
+                </label>
+                <div class="status-pill" id="cfgResult">-</div>
+              </div>
+              <p class="muted" style="margin-top: 12px">保存后会写入 SQLite 配置表，无需改 env；下一轮检查会生效。</p>
+            </div>
+            <div class="card">
+              <div class="card-header">
+                <strong>说明</strong>
+              </div>
+              <p class="muted" style="margin-top: 10px">
+                本项目的“监控”以 Key 池健康检查为核心：对每个 Key 调用 NovelAI `/user/subscription` 并按 401/402/403/409/429/5xx 等规则判定健康与冷却。
+              </p>
+            </div>
+          </div>
+        </section>
+      </main>
+    </div>
+
+    <script src="/assets/app.js"></script>
+  </body>
+</html>
