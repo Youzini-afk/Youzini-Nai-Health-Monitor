@@ -6,7 +6,7 @@
 
 - 登录保护：/login（Cookie 会话）
 - Key 池：上传/启用禁用/删除/单个检查/全量检查/一键拉取“更健康且更轻负载”的 Key
-- Key 健康检查：请求 https://api.novelai.net/user/subscription，
+- Key 健康检查：请求 https://api.novelai.net/user/subscription
 - 按 401/402/403/409/429/5xx 规则判定，并做冷却退避
 - Dashboard：
   - 饼图：健康/不健康/无效/待检查
